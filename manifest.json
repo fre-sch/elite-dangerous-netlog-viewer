@@ -1,0 +1,36 @@
+{
+  "manifest_version":"1",
+  "type":"WebApp",
+  "meta":{
+    "name":"Elite Dangerous: Netlog Viewer",
+    "version":"1.0.1.0",
+    "minimum-overwolf-version": "0.77.4.0",
+    "author":"Overwolf",
+    "icon":"icon.png",
+    "icon_gray":"icon_gray.png",
+    "description":"Watch Elite Dangerous netlog"
+  },
+  "data": {
+    "start_window":"index",
+    "windows":{
+      "index":{
+        "file":"index.html",
+        "transparent":true,
+        "resizable":true,
+        "show_in_taskbar": false,
+        "size": {
+          "width": 600,
+          "height": 120
+        },
+        "start_position": {
+          "Top": 100,
+          "Left": 300
+        }
+      }
+    },
+    "plugins": [
+      "npSimpleIOPlugin.dll"
+    ]
+  },
+  "permissions": ["FileSystem"]
+}

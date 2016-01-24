@@ -1,0 +1,152 @@
+<html>
+  <head>
+    <title>Elite Dangerous: Netlog Viewer</title>
+  </head>
+  <style>
+  body {
+    margin: 0;
+    padding: 0;
+    /*color: #ff7100;*/
+    color: #fff;
+    font-size: 1.3em;
+    font-family: monospace;
+    font-weight: bold;
+    text-shadow: 0 1px 3px #000;
+  }
+  #toolbar {
+    background: #000;
+  }
+  </style>
+  <body>
+    <embed  id="plugin" 
+            type="application/x-simple-io-plugin" 
+            width="0px" 
+            height="0px">
+    </embed>
+    
+    <div id="toolbar">
+      <span id="logDirectoryView"></span>
+      <button id="setPathButton">Set log directory</button>
+      <button id="closeWindowButton">X</button>
+    </div>
+    
+    <div id="messages">
+      <div id="line0"></div>
+      <div id="line1"></div>
+      <div id="line2"></div>
+      <div id="line3"></div>
+      <div id="line4"></div>
+    </div>
+    <script>
+var q = function(v) { return document.querySelector(v) }
+var plugin = q('#plugin');
+// ---------------------------------------------------------------------------
+function FileListener(plugin, onFileUpdate) {
+  if (!plugin)
+    throw new Error("plugin invalid: " + plugin)
+  this.plugin = plugin
+  this.fileName = null
+  this.id = null
+  this.skipToEnd = true
+  this.onFileUpdate = onFileUpdate || function(data) {
+    console.log("FileListener.onFileUpdate: " + data)
+  }
+}
+FileListener.prototype.stop = function() {
+  console.log("FileListener.stop", this.id, this.fileName)
+  if (this.id) {
+    this.plugin.stopFileListen(this.id)
+    this.id = null
+  }
+}
+FileListener.prototype.start = function(fileName) {
+  this.stop()
+  this.fileName = fileName
+  this.plugin.fileExists(fileName, this._start.bind(this))
+}
+FileListener.prototype._start = function(status) {
+  if (status === true) {
+    this.id = "" + Math.random()
+    console.log("FileListener._start ", this.fileName)
+    this.plugin.listenOnFile(
+      this.id, this.fileName, this.skipToEnd, this._onFileUpdate.bind(this))
+  }
+  else {
+    throw new Error("file '" + this.fileName + "' error: " + status)
+  }
+}
+FileListener.prototype._onFileUpdate = function(fileId, status, data) {
+  if (fileId == this.id) {
+    if (status) {
+      this.onFileUpdate(data)
+    }
+    else {
+      this.onError(status)
+    }
+  }
+}
+FileListener.prototype.onError = function(status) {
+  console.log("FileListener._onFileUpdate [error]: " + status)
+  this.stop()
+}
+// ---------------------------------------------------------------------------
+function queue(len) {
+    var ret = [];
+
+    ret.push = function(a) {
+        if(ret.length == len) ret.shift();
+        return Array.prototype.push.apply(this, arguments);
+    };
+
+    return ret;
+}
+// ---------------------------------------------------------------------------
+var lines = queue(5);
+var pushLine = function(data) {
+  lines.push(data)
+  for (var i=0, n=lines.length; i < n; ++i) {
+    q("#line"+i).innerText = lines[i]
+  }
+}
+var listener = new FileListener(plugin, pushLine)
+q("#closeWindowButton").onclick = function(event) {
+  overwolf.windows.getCurrentWindow(function(result){
+    if (result.status=="success")
+      overwolf.windows.close(result.window.id)
+  })
+}
+q("#toolbar").onmousedown = function(event) {
+  overwolf.windows.getCurrentWindow(function(result){
+    if (result.status=="success")
+      overwolf.windows.dragMove(result.window.id)
+  })
+}
+var startListener = function(path) {
+  path += "/netLog*"
+  plugin.getLatestFileInDirectory(path, function(status, fileName) {
+    if (status) {
+      listener.start(fileName)
+    }
+    else {
+      pushLine("error opening: " + path)
+    }
+  })
+}
+var logDirectory = window.localStorage.getItem("logDirectory")
+q("#logDirectoryView").innerText = logDirectory
+q("#setPathButton").onclick = function() {
+  overwolf.utils.openFilePicker("*.*", function(urlObject) {
+    logDirectory = (urlObject.url
+      .replace("overwolf-fs://", "")
+      .replace("/", ":/")
+    );
+    console.log("logDirectory", logDirectory)
+    window.localStorage.setItem("logDirectory", logDirectory);
+    q("#logDirectoryView").innerText = logDirectory
+    startListener(logDirectory)
+  });
+}
+startListener(logDirectory)
+    </script>
+  </body>
+</html>
